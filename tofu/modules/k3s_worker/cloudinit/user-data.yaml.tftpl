@@ -1,0 +1,42 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+write_files:
+  - path: /usr/local/bin/bootstrap-k3s-worker.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      echo "[$(date)] Starting K3s worker bootstrap"
+
+      # Wait for network
+      until ping -c1 8.8.8.8 &>/dev/null; do
+        echo "[$(date)] Waiting for network..."
+        sleep 2
+      done
+
+      # Extract server IP from URL
+      SERVER_IP=$(echo "${k3s_server_url}" | sed 's|https://||' | cut -d: -f1)
+
+      # Wait for K3s server to be ready
+      echo "[$(date)] Waiting for K3s server at $SERVER_IP..."
+      until curl -k -s "${k3s_server_url}/ping" &>/dev/null; do
+        echo "[$(date)] K3s server not ready yet..."
+        sleep 10
+      done
+
+      # Install K3s agent
+      curl -sfL https://get.k3s.io | \
+        K3S_URL="${k3s_server_url}" \
+        K3S_TOKEN="${k3s_token}" \
+        INSTALL_K3S_VERSION="${k3s_version}" \
+        sh -
+
+      echo "[$(date)] K3s worker bootstrap complete"
+      touch /var/lib/bootstrap-k3s-worker.ok
+
+runcmd:
+  - [ bash, -lc, "/usr/local/bin/bootstrap-k3s-worker.sh > /var/log/bootstrap-k3s-worker.log 2>&1" ]
+

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nvidia-smi-test
+  namespace: default
+spec:
+  restartPolicy: Never
+  containers:
+  - name: nvidia-smi
+    image: nvidia/cuda:12.6.3-base-ubuntu24.04
+    command: ["nvidia-smi"]
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+  nodeSelector:
+    accelerator: nvidia
+

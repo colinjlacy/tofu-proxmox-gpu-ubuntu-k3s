@@ -1,0 +1,94 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+write_files:
+  - path: /usr/local/bin/bootstrap-gpu-worker.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      echo "[$(date)] Starting GPU worker bootstrap"
+
+      # Wait for network
+      until ping -c1 8.8.8.8 &>/dev/null; do
+        echo "[$(date)] Waiting for network..."
+        sleep 2
+      done
+
+      echo "[$(date)] Installing prerequisites"
+      apt-get update
+      apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg \
+        dkms \
+        build-essential \
+        linux-headers-$(uname -r)
+
+      echo "[$(date)] Installing NVIDIA open kernel modules (version ${nvidia_driver_version}.105.08+)"
+      # Install NVIDIA open kernel modules
+      apt-get install -y --no-install-recommends \
+        nvidia-dkms-${nvidia_driver_version}-open \
+        nvidia-utils-${nvidia_driver_version} \
+        nvidia-kernel-open-${nvidia_driver_version}
+
+      echo "[$(date)] Validating NVIDIA driver installation"
+      # Validate driver
+      if ! nvidia-smi; then
+        echo "[$(date)] ERROR: nvidia-smi failed"
+        exit 1
+      fi
+
+      echo "[$(date)] Installing NVIDIA container toolkit"
+      # Install NVIDIA container toolkit
+      curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+      curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+        sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+        tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+      apt-get update
+      apt-get install -y nvidia-container-toolkit
+
+      echo "[$(date)] Configuring containerd for NVIDIA runtime"
+      # Configure containerd for K3s
+      mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
+      
+      # Configure NVIDIA runtime
+      nvidia-ctk runtime configure --runtime=containerd --config=/var/lib/rancher/k3s/agent/etc/containerd/config.toml
+
+      echo "[$(date)] Waiting for K3s server"
+      # Extract server IP from URL
+      SERVER_IP=$(echo "${k3s_server_url}" | sed 's|https://||' | cut -d: -f1)
+
+      # Wait for K3s server to be ready
+      until curl -k -s "${k3s_server_url}/ping" &>/dev/null; do
+        echo "[$(date)] K3s server not ready yet..."
+        sleep 10
+      done
+
+      echo "[$(date)] Installing K3s agent"
+      # Install K3s agent
+      curl -sfL https://get.k3s.io | \
+        K3S_URL="${k3s_server_url}" \
+        K3S_TOKEN="${k3s_token}" \
+        INSTALL_K3S_VERSION="${k3s_version}" \
+        sh -
+
+      # Wait for K3s agent to start
+      sleep 10
+
+      # Restart K3s to pick up containerd config
+      systemctl restart k3s-agent
+
+      echo "[$(date)] Labeling node as GPU node"
+      # Note: Node labeling happens post-bootstrap via kubectl
+      # This is documented in the outputs
+
+      echo "[$(date)] GPU worker bootstrap complete"
+      touch /var/lib/bootstrap-gpu-worker.ok
+
+runcmd:
+  - [ bash, -lc, "/usr/local/bin/bootstrap-gpu-worker.sh > /var/log/bootstrap-gpu-worker.log 2>&1" ]
+

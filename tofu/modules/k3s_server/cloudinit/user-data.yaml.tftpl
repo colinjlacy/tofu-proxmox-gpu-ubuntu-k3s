@@ -1,0 +1,39 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+write_files:
+  - path: /usr/local/bin/bootstrap-k3s-server.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      echo "[$(date)] Starting K3s server bootstrap"
+
+      # Wait for network
+      until ping -c1 8.8.8.8 &>/dev/null; do
+        echo "[$(date)] Waiting for network..."
+        sleep 2
+      done
+
+      # Install K3s server with pre-generated token
+      curl -sfL https://get.k3s.io | \
+        INSTALL_K3S_VERSION="${k3s_version}" \
+        sh -s - server \
+        --token="${k3s_token}" \
+        --write-kubeconfig-mode 0644 \
+        --disable=traefik
+
+      # Wait for K3s to be ready
+      until kubectl get nodes &>/dev/null; do
+        echo "[$(date)] Waiting for K3s to be ready..."
+        sleep 5
+      done
+
+      echo "[$(date)] K3s server bootstrap complete"
+      touch /var/lib/bootstrap-k3s-server.ok
+
+runcmd:
+  - [ bash, -lc, "/usr/local/bin/bootstrap-k3s-server.sh > /var/log/bootstrap-k3s-server.log 2>&1" ]
+
