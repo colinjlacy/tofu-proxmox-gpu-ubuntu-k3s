@@ -13,7 +13,7 @@ This guide shows how to create an API token for OpenTofu to interact with Proxmo
 4. Fill in the form:
    - **User**: Select your user (e.g., `root@pam`)
    - **Token ID**: Give it a name (e.g., `tofu`)
-   - **Privilege Separation**: Uncheck this box (or configure specific permissions)
+   - **Privilege Separation**: **UNCHECK THIS BOX** (required for PCI passthrough)
 
 5. Click **Add**
 
@@ -45,7 +45,7 @@ If you enabled privilege separation, the token needs these permissions:
 
 For simplicity in a lab environment, you can grant Administrator permissions to the token.
 
-## Via CLI
+## Via CLI (Recommended)
 
 SSH into your Proxmox node:
 
@@ -53,13 +53,15 @@ SSH into your Proxmox node:
 ssh root@192.168.0.37
 ```
 
-Create the token:
+Create the token **without privilege separation** (required for GPU passthrough):
 
 ```bash
 pveum user token add root@pam tofu --privsep 0
 ```
 
 This will output the token secret. Copy it immediately.
+
+**Important**: The `--privsep 0` flag is critical for PCI device passthrough to work.
 
 ## Using the Token in OpenTofu
 
@@ -73,6 +75,20 @@ proxmox_api_token = "root@pam!tofu=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 - Store the token securely
 - Never commit the token to version control (it's in `.gitignore`)
-- For production, use privilege separation and grant minimal permissions
+- For GPU passthrough, privilege separation **must** be disabled (`--privsep 0`)
+- For production without GPU passthrough, use privilege separation and grant minimal permissions
 - Consider using environment variables: `export TF_VAR_proxmox_api_token="..."`
+
+## Troubleshooting
+
+### Error: "only root can set 'hostpci0' config for non-mapped devices"
+
+This means your API token has privilege separation enabled. Fix with:
+
+```bash
+ssh root@192.168.0.37
+pveum user token remove root@pam tofu
+pveum user token add root@pam tofu --privsep 0
+# Update your lab.tfvars with the new token
+```
 

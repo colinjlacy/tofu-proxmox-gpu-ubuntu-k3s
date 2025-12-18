@@ -28,16 +28,18 @@ resource "proxmox_virtual_environment_vm" "k3s_gpu_worker" {
 
   # GPU passthrough
   hostpci {
-    device  = "hostpci0"
-    id      = var.gpu_pci_id
-    pcie    = true
-    rombar  = true
-    mapping = null
+    device = "hostpci0"
+    id     = var.gpu_pci_id
+    pcie   = true
+    rombar = true
   }
 
   agent {
     enabled = true
+    timeout = "15m"
   }
+
+  started = true
 
   operating_system {
     type = "l26"

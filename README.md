@@ -31,10 +31,12 @@ Automated provisioning of a GPU-enabled K3s cluster on Proxmox using OpenTofu. D
 
 ### 1. Create Proxmox API Token
 
+**Important**: Must disable privilege separation for GPU passthrough to work.
+
 See [docs/proxmox-api-token.md](docs/proxmox-api-token.md)
 
 ```bash
-# On Proxmox host
+# On Proxmox host (note --privsep 0 is critical)
 pveum user token add root@pam tofu --privsep 0
 ```
 
@@ -151,7 +153,7 @@ You should see nvidia-smi output showing your RTX 5060 Ti!
 | `proxmox_api_token` | API token | - |
 | `proxmox_node` | Proxmox node name | - |
 | `vm_disk_size_gb` | Disk size per VM | `30` |
-| `k3s_version` | K3s version | `v1.30.8+k3s1` |
+| `k3s_version` | K3s version | `v1.34.2+k3s1` |
 | `nvidia_driver_version` | NVIDIA driver series | `580` |
 | `gpu_pci_id` | GPU PCI address | - |
 | `worker_count` | Non-GPU workers | `2` |

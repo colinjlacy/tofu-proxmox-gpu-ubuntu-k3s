@@ -1,6 +1,8 @@
 # Proxmox Configuration
 proxmox_endpoint    = "https://192.168.0.37:8006"
 proxmox_api_token   = "user@realm!tokenid=secret-value-here"
+proxmox_username = "user@realm"
+proxmox_password = "thisthat"
 proxmox_insecure    = true
 proxmox_node        = "nuc"
 
@@ -12,10 +14,10 @@ vm_disk_size_gb     = 30
 
 # Cluster Configuration
 name_prefix         = "k3s"
-k3s_version         = "v1.30.8+k3s1"
+k3s_version         = "v1.34.2+k3s1"
 
 # SSH Access
-# Fetch your SSH key from GitHub: https://github.com/colinjlacy.keys
+# Fetch your SSH key from GitHub: https://github.com/<your_github_user>.keys
 ssh_public_keys = [
   "ssh-ed25519 AAAAC3... your-key-here"
 ]

@@ -5,7 +5,11 @@ output "vm_id" {
 
 output "vm_ip" {
   description = "VM IP address"
-  value       = proxmox_virtual_environment_vm.k3s_gpu_worker.ipv4_addresses[1][0]
+  value       = try(
+    proxmox_virtual_environment_vm.k3s_gpu_worker.ipv4_addresses[1][0],
+    proxmox_virtual_environment_vm.k3s_gpu_worker.ipv4_addresses[0][0],
+    "IP not available - check VM"
+  )
 }
 
 output "gpu_pci_id" {

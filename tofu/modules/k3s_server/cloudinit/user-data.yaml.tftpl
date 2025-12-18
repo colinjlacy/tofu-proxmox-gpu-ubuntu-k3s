@@ -2,6 +2,9 @@
 package_update: true
 package_upgrade: false
 
+packages:
+  - qemu-guest-agent
+
 write_files:
   - path: /usr/local/bin/bootstrap-k3s-server.sh
     permissions: "0755"
@@ -35,5 +38,6 @@ write_files:
       touch /var/lib/bootstrap-k3s-server.ok
 
 runcmd:
+  - [ systemctl, enable, --now, qemu-guest-agent ]
   - [ bash, -lc, "/usr/local/bin/bootstrap-k3s-server.sh > /var/log/bootstrap-k3s-server.log 2>&1" ]
 

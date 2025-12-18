@@ -9,6 +9,17 @@ variable "proxmox_api_token" {
   sensitive   = true
 }
 
+variable "proxmox_username" {
+  description = "Proxmox username"
+  type        = string
+}
+
+variable "proxmox_password" {
+  description = "Proxmox password"
+  type        = string
+  sensitive   = true
+}
+
 variable "proxmox_insecure" {
   description = "Skip TLS verification for self-signed certificates"
   type        = bool

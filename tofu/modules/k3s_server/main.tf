@@ -26,7 +26,10 @@ resource "proxmox_virtual_environment_vm" "k3s_server" {
 
   agent {
     enabled = true
+    timeout = "15m"
   }
+
+  started = true
 
   operating_system {
     type = "l26"
