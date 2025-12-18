@@ -60,3 +60,8 @@ variable "memory_mb" {
   type        = number
 }
 
+variable "hostname" {
+  description = "Hostname for the VM"
+  type        = string
+}
+

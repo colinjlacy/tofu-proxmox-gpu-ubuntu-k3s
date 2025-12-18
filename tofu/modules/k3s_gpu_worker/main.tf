@@ -76,6 +76,7 @@ resource "proxmox_virtual_environment_file" "cloud_init_gpu_worker" {
 
   source_raw {
     data = templatefile("${path.module}/cloudinit/user-data.yaml.tftpl", {
+      hostname              = var.hostname
       k3s_server_url        = var.k3s_server_url
       k3s_token             = var.k3s_token
       k3s_version           = var.k3s_version

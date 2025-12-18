@@ -1,4 +1,5 @@
 #cloud-config
+hostname: ${hostname}
 package_update: true
 package_upgrade: false
 
@@ -42,12 +43,10 @@ write_files:
         build-essential \
         linux-headers-$(uname -r)
 
-      echo "[$(date)] Installing NVIDIA open kernel modules (version ${nvidia_driver_version}.105.08+)"
-      # Install NVIDIA open kernel modules
+      echo "[$(date)] Installing NVIDIA open kernel driver (version ${nvidia_driver_version})"
+      # Install NVIDIA open kernel driver metapackage
       apt-get install -y --no-install-recommends \
-        nvidia-dkms-${nvidia_driver_version}-open \
-        nvidia-utils-${nvidia_driver_version} \
-        nvidia-kernel-open-${nvidia_driver_version}
+        nvidia-driver-${nvidia_driver_version}-open
 
       echo "[$(date)] Validating NVIDIA driver installation"
       # Validate driver

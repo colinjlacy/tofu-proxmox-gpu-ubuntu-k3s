@@ -24,6 +24,7 @@ module "k3s_server" {
   source = "./modules/k3s_server"
 
   name_prefix       = var.name_prefix
+  hostname          = "${var.name_prefix}-server"
   proxmox_node      = var.proxmox_node
   cloud_image_id    = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
   vm_network_bridge = var.vm_network_bridge
@@ -45,6 +46,7 @@ module "k3s_workers" {
   count  = var.worker_count
 
   name_prefix       = var.name_prefix
+  hostname          = "${var.name_prefix}-worker-${count.index}"
   worker_index      = count.index
   proxmox_node      = var.proxmox_node
   cloud_image_id    = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
@@ -70,6 +72,7 @@ module "k3s_gpu_worker" {
   source = "./modules/k3s_gpu_worker"
 
   name_prefix       = var.name_prefix
+  hostname          = "${var.name_prefix}-gpu-worker-0"
   worker_index      = 0
   proxmox_node      = var.proxmox_node
   cloud_image_id    = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
