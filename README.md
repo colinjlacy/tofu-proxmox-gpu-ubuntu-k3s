@@ -23,30 +23,29 @@ Automated provisioning of a GPU-enabled K3s cluster on Proxmox using OpenTofu. D
 - NVIDIA GPU with passthrough enabled
 - IOMMU enabled in BIOS and Proxmox
 - At least 30GB free storage per VM (120GB total)
-- Storage named `local` for cloud image download
+- Storage named `local` with `snippets` and `import` content types enabled
 - OpenTofu 1.10.1+ installed locally
 - kubectl installed locally
 
-## Quick Start
+### Configure Proxmox Storage
 
-### 1. Create Proxmox API Token
-
-**Important**: Must disable privilege separation for GPU passthrough to work.
-
-See [docs/proxmox-api-token.md](docs/proxmox-api-token.md)
+The `local` storage must support `snippets` (for cloud-init) and `import` (for disk images). On your Proxmox host, run:
 
 ```bash
-# On Proxmox host (note --privsep 0 is critical)
-pveum user token add root@pam tofu --privsep 0
+ssh root@192.168.0.37
+pvesm set local --content backup,iso,vztmpl,snippets,import
+mkdir -p /var/lib/vz/snippets
 ```
 
-### 2. Get Your SSH Key
+## Quick Start
+
+### 1. Get Your SSH Key
 
 ```bash
 curl https://github.com/<your_github_user>.keys
 ```
 
-### 3. Configure Variables
+### 2. Configure Variables
 
 ```bash
 cd tofu/env
@@ -55,11 +54,14 @@ nano lab.tfvars
 ```
 
 Update with your values:
-- `proxmox_api_token`: Token from step 1
-- `ssh_public_keys`: Your SSH key from step 2
+- `proxmox_username`: Your Proxmox username (e.g., `root@pam`)
+- `proxmox_password`: Your Proxmox password
+- `ssh_public_keys`: Your SSH key from step 1
 - `gpu_pci_id`: Verify with `ssh root@192.168.0.37 "lspci | grep -i nvidia"`
 
-### 4. Deploy Cluster
+**Note**: Username/password authentication is required for PCI passthrough. API tokens don't support all operations needed for GPU passthrough. See the [provider documentation](https://registry.terraform.io/providers/bpg/proxmox/latest/docs#api-token-authentication) for details.
+
+### 3. Deploy Cluster
 
 ```bash
 cd tofu
@@ -70,7 +72,7 @@ tofu apply -var-file=env/lab.tfvars
 
 Wait 5-10 minutes for cloud image download and VMs to boot and complete cloud-init.
 
-### 5. Get Kubeconfig
+### 4. Get Kubeconfig
 
 ```bash
 # Get server IP from OpenTofu output
@@ -85,19 +87,19 @@ export KUBECONFIG=./kubeconfig
 kubectl get nodes -o wide
 ```
 
-### 6. Label GPU Node
+### 5. Label GPU Node
 
 ```bash
 kubectl label node k3s-gpu-worker-0 accelerator=nvidia
 ```
 
-### 7. Deploy NVIDIA Device Plugin
+### 6. Deploy NVIDIA Device Plugin
 
 ```bash
 kubectl apply -f ../k8s/nvidia-device-plugin.yaml
 ```
 
-### 8. Verify GPU
+### 7. Verify GPU
 
 ```bash
 # Check node has GPU capacity
@@ -107,7 +109,7 @@ kubectl describe node k3s-gpu-worker-0 | grep -A5 Capacity
 #   nvidia.com/gpu: 1
 ```
 
-### 9. Test GPU Workload
+### 8. Test GPU Workload
 
 ```bash
 kubectl apply -f ../k8s/test-gpu-pod.yaml
@@ -122,10 +124,6 @@ You should see nvidia-smi output showing your RTX 5060 Ti!
 .
 ├── README.md                         # This file
 ├── opentofu-proxmox-k3s-gpu.md      # Reference documentation
-├── docs/
-│   ├── ubuntu-template-setup.md      # Manual template (reference only, not required)
-│   ├── proxmox-api-token.md          # API token setup
-│   └── troubleshooting.md            # Common issues and fixes
 ├── tofu/
 │   ├── versions.tf                   # OpenTofu version constraints
 │   ├── providers.tf                  # Proxmox provider config
@@ -150,7 +148,8 @@ You should see nvidia-smi output showing your RTX 5060 Ti!
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `proxmox_endpoint` | Proxmox API URL | - |
-| `proxmox_api_token` | API token | - |
+| `proxmox_username` | Proxmox username | - |
+| `proxmox_password` | Proxmox password | - |
 | `proxmox_node` | Proxmox node name | - |
 | `vm_disk_size_gb` | Disk size per VM | `30` |
 | `k3s_version` | K3s version | `v1.34.2+k3s1` |
@@ -200,8 +199,6 @@ spec:
 2. Run `tofu apply -var-file=env/lab.tfvars`
 
 ## Troubleshooting
-
-See [docs/troubleshooting.md](docs/troubleshooting.md) for common issues.
 
 Quick checks:
 
