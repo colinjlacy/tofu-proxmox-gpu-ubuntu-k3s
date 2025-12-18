@@ -93,15 +93,13 @@ write_files:
 
       echo "[$(date)] Configuring NVIDIA runtime for K3s containerd"
       # Add NVIDIA runtime to the existing K3s containerd config
-      cat >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl <<'NVIDIA_EOF'
-
-[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia]
-  runtime_type = "io.containerd.runc.v2"
-
-[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia.options]
-  BinaryName = "/usr/bin/nvidia-container-runtime"
-  SystemdCgroup = true
-NVIDIA_EOF
+      echo "" >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+      echo '[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia]' >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+      echo '  runtime_type = "io.containerd.runc.v2"' >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+      echo "" >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+      echo '[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia.options]' >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+      echo '  BinaryName = "/usr/bin/nvidia-container-runtime"' >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+      echo '  SystemdCgroup = true' >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
 
       # Restart K3s to pick up NVIDIA runtime
       echo "[$(date)] Restarting K3s agent to pick up NVIDIA runtime"
