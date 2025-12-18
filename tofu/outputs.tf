@@ -14,6 +14,12 @@ output "k3s_token" {
   sensitive   = true
 }
 
+output "ubuntu_password" {
+  description = "Password for ubuntu user on all VMs (for console access)"
+  value       = random_password.ubuntu_password.result
+  sensitive   = true
+}
+
 output "worker_ips" {
   description = "IP addresses of non-GPU worker nodes"
   value       = [for w in module.k3s_workers : w.vm_ip]
@@ -47,8 +53,9 @@ output "next_steps" {
     5. Test GPU:
        ./scripts/test-gpu.sh
     
-    Note: K3s cluster token is managed by OpenTofu and passed to all nodes.
-    To view: tofu output -raw k3s_token
+    Credentials:
+    - K3s token: tofu output -raw k3s_token
+    - Ubuntu password (console access): tofu output -raw ubuntu_password
   EOT
 }
 

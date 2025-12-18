@@ -13,6 +13,12 @@ resource "random_password" "k3s_token" {
   special = false
 }
 
+# Generate ubuntu user password for console access (debugging)
+resource "random_password" "ubuntu_password" {
+  length  = 16
+  special = true
+}
+
 # K3s Server (Control Plane)
 module "k3s_server" {
   source = "./modules/k3s_server"
@@ -25,6 +31,7 @@ module "k3s_server" {
   vm_disk_size_gb   = var.vm_disk_size_gb
 
   ssh_public_keys = var.ssh_public_keys
+  ubuntu_password = random_password.ubuntu_password.result
   k3s_version     = var.k3s_version
   k3s_token       = random_password.k3s_token.result
 
@@ -46,6 +53,7 @@ module "k3s_workers" {
   vm_disk_size_gb   = var.vm_disk_size_gb
 
   ssh_public_keys = var.ssh_public_keys
+  ubuntu_password = random_password.ubuntu_password.result
 
   k3s_server_url = module.k3s_server.server_url
   k3s_token      = random_password.k3s_token.result
@@ -70,6 +78,7 @@ module "k3s_gpu_worker" {
   vm_disk_size_gb   = var.vm_disk_size_gb
 
   ssh_public_keys = var.ssh_public_keys
+  ubuntu_password = random_password.ubuntu_password.result
 
   gpu_pci_id        = var.gpu_pci_id
   gpu_all_functions = true

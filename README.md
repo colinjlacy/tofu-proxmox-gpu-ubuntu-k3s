@@ -198,6 +198,18 @@ spec:
 1. Update `worker_count` in `lab.tfvars`
 2. Run `tofu apply -var-file=env/lab.tfvars`
 
+## Console Access
+
+All VMs are configured with the same randomly-generated password for the `ubuntu` user. This is for console access when debugging via Proxmox.
+
+To retrieve the password:
+```bash
+cd tofu
+tofu output -raw ubuntu_password
+```
+
+**Note**: This shared password approach is for lab/debugging purposes only and is not recommended for production use. In production, use SSH keys exclusively and disable password authentication.
+
 ## Troubleshooting
 
 Quick checks:

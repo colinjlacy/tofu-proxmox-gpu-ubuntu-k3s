@@ -38,6 +38,12 @@ variable "ssh_public_keys" {
   type        = list(string)
 }
 
+variable "ubuntu_password" {
+  description = "Password for ubuntu user"
+  type        = string
+  sensitive   = true
+}
+
 variable "gpu_pci_id" {
   description = "GPU PCI ID to pass through"
   type        = string

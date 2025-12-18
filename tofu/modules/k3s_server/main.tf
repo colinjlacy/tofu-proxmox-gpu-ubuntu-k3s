@@ -66,8 +66,10 @@ resource "proxmox_virtual_environment_file" "cloud_init_server" {
 
   source_raw {
     data = templatefile("${path.module}/cloudinit/user-data.yaml.tftpl", {
-      k3s_version = var.k3s_version
-      k3s_token   = var.k3s_token
+      k3s_version      = var.k3s_version
+      k3s_token        = var.k3s_token
+      ubuntu_password  = var.ubuntu_password
+      ssh_public_keys  = var.ssh_public_keys
     })
 
     file_name = "${var.name_prefix}-server-cloud-init.yaml"

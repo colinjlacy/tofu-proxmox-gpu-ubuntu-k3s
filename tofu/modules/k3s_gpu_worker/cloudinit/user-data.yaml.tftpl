@@ -5,6 +5,18 @@ package_upgrade: false
 packages:
   - qemu-guest-agent
 
+# Set ubuntu user password for console access
+chpasswd:
+  list: |
+    ubuntu:${ubuntu_password}
+  expire: false
+
+# Set SSH authorized keys
+ssh_authorized_keys:
+%{ for key in ssh_public_keys ~}
+  - ${key}
+%{ endfor ~}
+
 write_files:
   - path: /usr/local/bin/bootstrap-gpu-worker.sh
     permissions: "0755"

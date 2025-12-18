@@ -80,6 +80,8 @@ resource "proxmox_virtual_environment_file" "cloud_init_gpu_worker" {
       k3s_token             = var.k3s_token
       k3s_version           = var.k3s_version
       nvidia_driver_version = var.nvidia_driver_version
+      ubuntu_password       = var.ubuntu_password
+      ssh_public_keys       = var.ssh_public_keys
     })
 
     file_name = "${var.name_prefix}-gpu-worker-${var.worker_index}-cloud-init.yaml"

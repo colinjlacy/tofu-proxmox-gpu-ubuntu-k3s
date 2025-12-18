@@ -33,6 +33,12 @@ variable "ssh_public_keys" {
   type        = list(string)
 }
 
+variable "ubuntu_password" {
+  description = "Password for ubuntu user"
+  type        = string
+  sensitive   = true
+}
+
 variable "k3s_version" {
   description = "K3s version"
   type        = string
