@@ -65,13 +65,6 @@ write_files:
       apt-get update
       apt-get install -y nvidia-container-toolkit
 
-      echo "[$(date)] Configuring containerd for NVIDIA runtime"
-      # Configure containerd for K3s
-      mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
-      
-      # Configure NVIDIA runtime
-      nvidia-ctk runtime configure --runtime=containerd --config=/var/lib/rancher/k3s/agent/etc/containerd/config.toml
-
       echo "[$(date)] Waiting for K3s server"
       # Extract server IP from URL
       SERVER_IP=$(echo "${k3s_server_url}" | sed 's|https://||' | cut -d: -f1)
@@ -90,11 +83,32 @@ write_files:
         INSTALL_K3S_VERSION="${k3s_version}" \
         sh -
 
-      # Wait for K3s agent to start
-      sleep 10
+      # Wait for K3s to generate its containerd config
+      echo "[$(date)] Waiting for K3s to generate containerd config"
+      until [ -f /var/lib/rancher/k3s/agent/etc/containerd/config.toml ]; do
+        echo "[$(date)] Waiting for containerd config..."
+        sleep 2
+      done
+      sleep 5
 
-      # Restart K3s to pick up containerd config
+      echo "[$(date)] Configuring NVIDIA runtime for K3s containerd"
+      # Add NVIDIA runtime to the existing K3s containerd config
+      cat >> /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl <<'NVIDIA_EOF'
+
+[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia]
+  runtime_type = "io.containerd.runc.v2"
+
+[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia.options]
+  BinaryName = "/usr/bin/nvidia-container-runtime"
+  SystemdCgroup = true
+NVIDIA_EOF
+
+      # Restart K3s to pick up NVIDIA runtime
+      echo "[$(date)] Restarting K3s agent to pick up NVIDIA runtime"
       systemctl restart k3s-agent
+      
+      # Wait for K3s to come back up
+      sleep 10
 
       echo "[$(date)] Labeling node as GPU node"
       # Note: Node labeling happens post-bootstrap via kubectl
