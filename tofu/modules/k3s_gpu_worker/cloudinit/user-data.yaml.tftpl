@@ -33,16 +33,16 @@ write_files:
         sleep 2
       done
 
-        echo "[$(date)] Installing prerequisites"
-        apt-get update
-        apt-get install -y --no-install-recommends \
-          ca-certificates \
-          curl \
-          gnupg \
-          dkms \
-          build-essential \
-          linux-headers-$(uname -r) \
-          runc
+      echo "[$(date)] Installing prerequisites"
+      apt-get update
+      apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg \
+        dkms \
+        build-essential \
+        linux-headers-$(uname -r) \
+        runc
 
       echo "[$(date)] Installing NVIDIA open kernel driver (version ${nvidia_driver_version})"
       # Install NVIDIA open kernel driver metapackage
@@ -56,20 +56,20 @@ write_files:
         exit 1
       fi
 
-        echo "[$(date)] Installing NVIDIA container toolkit"
-        # Install NVIDIA container toolkit
-        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-        curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-          sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-          tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+      echo "[$(date)] Installing NVIDIA container toolkit"
+      # Install NVIDIA container toolkit
+      curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+      curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+        sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+        tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
-        apt-get update
-        apt-get install -y nvidia-container-toolkit
+      apt-get update
+      apt-get install -y nvidia-container-toolkit
 
-        echo "[$(date)] Generating CDI specs for GPU"
-        # Generate CDI specs so device plugin can discover GPUs
-        mkdir -p /etc/cdi
-        nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+      echo "[$(date)] Generating CDI specs for GPU"
+      # Generate CDI specs so device plugin can discover GPUs
+      mkdir -p /etc/cdi
+      nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 
       echo "[$(date)] Waiting for K3s server"
       # Extract server IP from URL

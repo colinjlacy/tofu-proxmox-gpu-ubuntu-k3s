@@ -1,0 +1,18 @@
+# Install into namespace gpu-operator (recommended)
+operator:
+  defaultRuntime: containerd
+
+driver:
+  enabled: false
+
+toolkit:
+  enabled: true
+  env:
+    # K3s containerd socket
+    - name: CONTAINERD_SOCKET
+      value: /run/k3s/containerd/containerd.sock
+
+    # K3s uses a generated config; template is the persistent way to manage it
+    # (This is the key difference from "normal" containerd installs.)
+    - name: CONTAINERD_CONFIG
+      value: /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
