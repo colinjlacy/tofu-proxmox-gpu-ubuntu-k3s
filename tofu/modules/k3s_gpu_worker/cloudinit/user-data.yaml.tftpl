@@ -68,6 +68,7 @@ write_files:
 
         echo "[$(date)] Generating CDI specs for GPU"
         # Generate CDI specs so device plugin can discover GPUs
+        mkdir -p /etc/cdi
         nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 
       echo "[$(date)] Waiting for K3s server"
@@ -88,9 +89,26 @@ write_files:
         INSTALL_K3S_VERSION="${k3s_version}" \
         sh -
 
-      echo "[$(date)] K3s agent installed successfully"
-      echo "[$(date)] Note: NVIDIA container runtime must be configured manually post-deployment"
-      echo "[$(date)] Node labeling and GPU plugin deployment should be done via kubectl"
+      echo "[$(date)] Configuring K3s containerd for NVIDIA runtime"
+      CTRD_DIR="/var/lib/rancher/k3s/agent/etc/containerd"
+      CTRD_TMPL="$${CTRD_DIR}/config.toml.tmpl"
+
+      mkdir -p "$${CTRD_DIR}"
+
+      if [[ ! -f "$${CTRD_TMPL}" ]]; then
+        cp "$${CTRD_DIR}/config.toml" "$${CTRD_TMPL}"
+      fi
+
+      if ! grep -q 'default_runtime_name = "nvidia"' "$${CTRD_TMPL}"; then
+        cat >> "$${CTRD_TMPL}" <<'EOF'
+
+      [plugins.'io.containerd.cri.v1.runtime'.containerd]
+        default_runtime_name = "nvidia"
+      EOF
+      fi
+
+      echo "[$(date)] Restarting k3s-agent to apply NVIDIA runtime configuration"
+      systemctl restart k3s-agent
 
       echo "[$(date)] GPU worker bootstrap complete"
       touch /var/lib/bootstrap-gpu-worker.ok
