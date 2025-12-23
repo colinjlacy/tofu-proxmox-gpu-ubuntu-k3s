@@ -263,3 +263,11 @@ MIT
 ## Contributing
 
 Issues and pull requests welcome!
+
+## HuggingFace Token
+
+Make sure to create a HuggingFace token, and store it as a Secret in your Kubernetes cluster:
+```sh
+kubectl -n llm create secret generic hf-token \
+  --from-literal=token='hf_XXXXXXXXXXXXXXXXXXXX'
+```

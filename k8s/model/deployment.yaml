@@ -30,34 +30,60 @@ spec:
         - name: download-model
           image: alpine:3.20
           command: ["/bin/sh","-lc"]
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: token
+
           args:
             - |
               set -eux
-              apk add --no-cache curl
+              apk add --no-cache curl coreutils
               cd /models
-              if [ ! -f Ministral-3-8B-Instruct-2512-Q5_K_M.gguf ]; then
-                echo "Downloading GGUF..."
-                curl -L -o Ministral-3-8B-Instruct-2512-Q5_K_M.gguf \
-                  "https://huggingface.co/bartowski/mistralai_Ministral-3-8B-Instruct-2512-GGUF/resolve/main/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf"
-              else
-                echo "Model already present."
+
+              FILE="Ministral-3-8B-Instruct-2512-Q5_K_M.gguf"
+              URL="https://huggingface.co/mistralai/Ministral-3-8B-Instruct-2512-GGUF/resolve/main/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf"
+
+              # If a bad file is already on the PVC, remove it and re-download.
+              if [ -f "$FILE" ]; then
+                magic="$(head -c 4 "$FILE" 2>/dev/null || true)"
+                if [ "$magic" != "GGUF" ]; then
+                  echo "Existing file is not GGUF (magic=$magic). Removing."
+                  rm -f "$FILE"
+                fi
               fi
+
+              if [ ! -f "$FILE" ]; then
+                echo "Downloading $FILE ..."
+                curl -fL --retry 5 --retry-delay 2 \
+                  -H "Authorization: Bearer ${HF_TOKEN}" \
+                  -o "$FILE" \
+                  "$URL"
+              fi
+
+              magic="$(head -c 4 "$FILE" 2>/dev/null || true)"
+              [ "$magic" = "GGUF" ] || (echo "Downloaded file is not GGUF (magic=$magic)."; exit 1)
           volumeMounts:
             - name: model
               mountPath: /models
 
       containers:
         - name: llama-server
-          image: ghcr.io/ggml-org/llama.cpp:full-cuda
-          command: ["/bin/sh","-lc"]
+          image: ghcr.io/ggml-org/llama.cpp:server-cuda
+          command: ["/app/llama-server"]
           args:
-            - |
-              set -eux
-              llama-server \
-                --model /models/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf \
-                --host 0.0.0.0 --port 8080 \
-                --ctx-size 4096 \
-                --n-gpu-layers 999
+            - "--model"
+            - "/models/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8080"
+            - "--ctx-size"
+            - "4096"
+            - "--n-gpu-layers"
+            - "999"
           ports:
             - containerPort: 8080
               name: http
