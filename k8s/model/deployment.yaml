@@ -1,0 +1,74 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ministral-llama-server
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ministral-llama-server
+  template:
+    metadata:
+      labels:
+        app: ministral-llama-server
+    spec:
+
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: ministral-model-pvc
+
+      initContainers:
+        - name: download-model
+          image: alpine:3.20
+          command: ["/bin/sh","-lc"]
+          args:
+            - |
+              set -eux
+              apk add --no-cache curl
+              cd /models
+              if [ ! -f Ministral-3-8B-Instruct-2512-Q5_K_M.gguf ]; then
+                echo "Downloading GGUF..."
+                curl -L -o Ministral-3-8B-Instruct-2512-Q5_K_M.gguf \
+                  "https://huggingface.co/bartowski/mistralai_Ministral-3-8B-Instruct-2512-GGUF/resolve/main/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf"
+              else
+                echo "Model already present."
+              fi
+          volumeMounts:
+            - name: model
+              mountPath: /models
+
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggml-org/llama.cpp:full-cuda
+          command: ["/bin/sh","-lc"]
+          args:
+            - |
+              set -eux
+              llama-server \
+                --model /models/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf \
+                --host 0.0.0.0 --port 8080 \
+                --ctx-size 4096 \
+                --n-gpu-layers 999
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+              cpu: "4"
+              memory: "20Gi"
+            requests:
+              cpu: "2"
+              memory: "12Gi"
+          volumeMounts:
+            - name: model
+              mountPath: /models
