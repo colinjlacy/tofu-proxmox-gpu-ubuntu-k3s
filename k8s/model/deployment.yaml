@@ -1,100 +1,45 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ministral-llama-server
+  name: qwen3-vllm
   namespace: llm
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ministral-llama-server
+      app: qwen3-vllm
   template:
     metadata:
       labels:
-        app: ministral-llama-server
+        app: qwen3-vllm
     spec:
-
       tolerations:
-      - key: nvidia.com/gpu
-        operator: Equal
-        value: "true"
-        effect: NoSchedule
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
 
-      volumes:
-        - name: model
-          persistentVolumeClaim:
-            claimName: ministral-model-pvc
-
-      initContainers:
-        - name: download-model
-          image: alpine:3.20
-          command: ["/bin/sh","-lc"]
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:latest
+          args:
+            - "Qwen/Qwen3-0.6B-FP8"
+            - "--reasoning-parser"
+            - "qwen3"
           env:
             - name: HF_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: hf-token
                   key: token
-
-          args:
-            - |
-              set -eux
-              apk add --no-cache curl coreutils
-              cd /models
-
-              FILE="Ministral-3-8B-Instruct-2512-Q5_K_M.gguf"
-              URL="https://huggingface.co/mistralai/Ministral-3-8B-Instruct-2512-GGUF/resolve/main/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf"
-
-              # If a bad file is already on the PVC, remove it and re-download.
-              if [ -f "$FILE" ]; then
-                magic="$(head -c 4 "$FILE" 2>/dev/null || true)"
-                if [ "$magic" != "GGUF" ]; then
-                  echo "Existing file is not GGUF (magic=$magic). Removing."
-                  rm -f "$FILE"
-                fi
-              fi
-
-              if [ ! -f "$FILE" ]; then
-                echo "Downloading $FILE ..."
-                curl -fL --retry 5 --retry-delay 2 \
-                  -H "Authorization: Bearer ${HF_TOKEN}" \
-                  -o "$FILE" \
-                  "$URL"
-              fi
-
-              magic="$(head -c 4 "$FILE" 2>/dev/null || true)"
-              [ "$magic" = "GGUF" ] || (echo "Downloaded file is not GGUF (magic=$magic)."; exit 1)
-          volumeMounts:
-            - name: model
-              mountPath: /models
-
-      containers:
-        - name: llama-server
-          image: ghcr.io/ggml-org/llama.cpp:server-cuda
-          command: ["/app/llama-server"]
-          args:
-            - "--model"
-            - "/models/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf"
-            - "--host"
-            - "0.0.0.0"
-            - "--port"
-            - "8080"
-            - "--ctx-size"
-            - "4096"
-            - "--n-gpu-layers"
-            - "999"
           ports:
-            - containerPort: 8080
+            - containerPort: 8000
               name: http
           resources:
             limits:
               nvidia.com/gpu: "1"
               cpu: "4"
-              memory: "20Gi"
+              memory: "6Gi"
             requests:
-              cpu: "2"
-              memory: "12Gi"
-          volumeMounts:
-            - name: model
-              mountPath: /models
+              cpu: "4"
+              memory: "6Gi"

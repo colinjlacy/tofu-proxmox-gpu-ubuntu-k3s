@@ -45,6 +45,12 @@ variable "vm_disk_size_gb" {
   default     = 30
 }
 
+variable "gpu_vm_disk_size_gb" {
+  description = "Default disk size for all VMs in GB"
+  type        = number
+  default     = 60
+}
+
 variable "name_prefix" {
   description = "Prefix for VM names"
   type        = string

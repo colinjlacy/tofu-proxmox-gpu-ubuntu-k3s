@@ -271,3 +271,21 @@ Make sure to create a HuggingFace token, and store it as a Secret in your Kubern
 kubectl -n llm create secret generic hf-token \
   --from-literal=token='hf_XXXXXXXXXXXXXXXXXXXX'
 ```
+
+## NVIDIA Operator
+
+To install the NVIDIA Operator, use the following command:
+```sh
+helm upgrade --install \
+  -n gpu-operator --create-namespace \
+  gpu-operator nvidia/gpu-operator \
+  --version v25.10.1 \
+  -f ../helm/operator-values.yaml
+```
+
+## Node Taint
+
+Be sure to apply the node taint found in the `k8s` directory:
+```sh
+kubectl patch node k3s-gpu-worker-0 --patch-file ../k8s/gpu-node-taint.yaml
+```

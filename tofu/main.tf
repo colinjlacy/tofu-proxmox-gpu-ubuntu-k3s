@@ -78,7 +78,7 @@ module "k3s_gpu_worker" {
   cloud_image_id    = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
   vm_network_bridge = var.vm_network_bridge
   vm_storage        = var.vm_storage
-  vm_disk_size_gb   = var.vm_disk_size_gb
+  vm_disk_size_gb   = var.gpu_vm_disk_size_gb
 
   ssh_public_keys = var.ssh_public_keys
   ubuntu_password = random_password.ubuntu_password.result

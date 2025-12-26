@@ -2,13 +2,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: ministral
+  name: qwen3
   namespace: llm
 spec:
   selector:
-    app: ministral-llama-server
+    app: qwen3-vllm
   ports:
     - name: http
-      port: 8080
-      targetPort: 8080
+      port: 8000
+      targetPort: 8000
   type: ClusterIP
