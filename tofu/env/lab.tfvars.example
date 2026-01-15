@@ -9,11 +9,12 @@ proxmox_node        = "nuc"
 # Storage and Network
 vm_storage          = "local-lvm"
 vm_network_bridge   = "vmbr0"
-vm_disk_size_gb     = 30
+vm_disk_size_gb     = 60
+gpu_vm_disk_size_gb = 60
 
 # Cluster Configuration
 name_prefix         = "k3s"
-k3s_version         = "v1.34.2+k3s1"
+k3s_version         = "v1.35.0+k3s1"
 
 # SSH Access
 # Fetch your SSH key from GitHub: https://github.com/<your_github_user>.keys
@@ -22,7 +23,8 @@ ssh_public_keys = [
 ]
 
 # GPU Configuration
-gpu_pci_id          = "00000000:00:10.0"
+gpu_pci_id          = "0000:01:00.0"
+# https://www.nvidia.com/en-gb/geforce/drivers/
 nvidia_driver_version = "580"
 
 # Node Sizing
@@ -33,6 +35,6 @@ worker_cores        = 2
 worker_memory_mb    = 4096
 worker_count        = 2
 
-gpu_worker_cores    = 4
-gpu_worker_memory_mb = 8192
+gpu_worker_cores    = 6
+gpu_worker_memory_mb = 16384
 
