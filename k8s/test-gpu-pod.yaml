@@ -14,5 +14,7 @@ spec:
     image: nvcr.io/nvidia/cuda:12.4.1-base-ubuntu22.04
     command: ["nvidia-smi"]
     resources:                                                              
-      limits:                                                               
+      limits:                 
+        # colinjcodesalot: 1
+        # colinj.com/codesalot: 1
         nvidia.com/gpu: 1 
