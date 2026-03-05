@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-pvc
+  namespace: llm
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      # if we're using K3s, default storage class is local-path
+      storage: 30Gi
