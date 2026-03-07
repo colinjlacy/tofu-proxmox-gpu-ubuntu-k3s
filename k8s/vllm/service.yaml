@@ -9,6 +9,6 @@ spec:
     app: qwen3-vllm
   ports:
     - name: http
-      port: 8000
+      port: 8080
       targetPort: 8000
-  type: ClusterIP
+  type: LoadBalancer

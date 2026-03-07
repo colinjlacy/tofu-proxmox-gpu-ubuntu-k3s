@@ -42,9 +42,9 @@ spec:
               set -eux
               apk add --no-cache curl coreutils
               cd /models
-
-              FILE="Qwen3-0.6B-Q8_0.gguf"
-              URL="https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q6_K.gguf"
+              mkdir -p llama-cpp
+              FILE="llama-cpp/Qwen3.5-9B-Q8_0.gguf"
+              URL="https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q8_0.gguf"
 
               # If a bad file is already on the PVC, remove it and re-download.
               if [ -f "$FILE" ]; then
@@ -75,7 +75,7 @@ spec:
           command: ["/app/llama-server"]
           args:
             - "--model"
-            - "/models/Qwen3-0.6B-Q8_0.gguf"
+            - "/models/llama-cpp/Qwen3.5-9B-Q8_0.gguf"
             - "--host"
             - "0.0.0.0"
             - "--port"
@@ -91,10 +91,7 @@ spec:
             limits:
               nvidia.com/gpu: "1"
               cpu: "4"
-              memory: "20Gi"
-            requests:
-              cpu: "2"
-              memory: "12Gi"
+              memory: 12Gi
           volumeMounts:
             - name: model
               mountPath: /models

@@ -19,19 +19,46 @@ spec:
           value: "true"
           effect: NoSchedule
 
-      containers:
-        - name: vllm
-          image: vllm/vllm-openai:latest
-          args:
-            - "Qwen/Qwen3-0.6B-FP8"
-            - "--reasoning-parser"
-            - "qwen3"
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: model-pvc
+
+      initContainers:
+        - name: download-model
+          image: python:3.12-alpine
+          command: ["/bin/sh", "-lc"]
           env:
             - name: HF_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: hf-token
                   key: token
+            - name: VLLM_MODEL
+              value: "mlx-community/Qwen3.5-9B-MLX-8bit"
+          args:
+            - |
+              set -eux
+              MODEL_DIR="/models/vllm/${VLLM_MODEL#*/}"
+              if [ -d "$MODEL_DIR" ] && [ -n "$(ls -A "$MODEL_DIR" 2>/dev/null)" ]; then
+                echo "vLLM model already present at $MODEL_DIR, skipping download."
+                exit 0
+              fi
+              pip install -q --no-cache-dir "huggingface_hub[cli]"
+              mkdir -p /models/vllm
+              echo "Downloading vLLM model ${VLLM_MODEL} ..."
+              huggingface-cli download "${VLLM_MODEL}" --local-dir "/models/vllm/${VLLM_MODEL#*/}" --token "${HF_TOKEN}"
+          volumeMounts:
+            - name: model
+              mountPath: /models
+
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:v0.17.0
+          args:
+            - "/models/vllm/Qwen3.5-9B-MLX-8bit"
+            - "--reasoning-parser"
+            - "qwen3"
           ports:
             - containerPort: 8000
               name: http
@@ -39,7 +66,7 @@ spec:
             limits:
               nvidia.com/gpu: "1"
               cpu: "4"
-              memory: "6Gi"
-            requests:
-              cpu: "4"
-              memory: "6Gi"
+              memory: 12Gi
+          volumeMounts:
+            - name: model
+              mountPath: /models
