@@ -19,12 +19,12 @@ spec:
       - key: nvidia.com/gpu
         operator: Equal
         value: "true"
-        effect: NoSchedule
+        # effect: NoSchedule
 
       volumes:
         - name: model
           persistentVolumeClaim:
-            claimName: ministral-model-pvc
+            claimName: model-pvc
 
       initContainers:
         - name: download-model
@@ -44,7 +44,7 @@ spec:
               cd /models
 
               FILE="Qwen3-0.6B-Q8_0.gguf"
-              URL="https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf"
+              URL="https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q6_K.gguf"
 
               # If a bad file is already on the PVC, remove it and re-download.
               if [ -f "$FILE" ]; then

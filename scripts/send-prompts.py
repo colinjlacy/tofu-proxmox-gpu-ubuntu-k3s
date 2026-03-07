@@ -105,6 +105,9 @@ def send_request(
             "max_tokens": max_tokens,
             "temperature": temperature,
             "stream": True,
+            "stream_options": {
+                "include_usage": True,
+            }
         }
     else:
         payload = {
@@ -112,6 +115,9 @@ def send_request(
             "max_tokens": max_tokens,
             "temperature": temperature,
             "stream": True,
+            "stream_options": {
+                "include_usage": True,
+            }
         }
     
     if model:
