@@ -14,35 +14,41 @@ PROMPTS = [
     "Explain concurrency in simple terms.",
 ]
 
-def parse_sse_stream(response, endpoint: str, debug: bool = False) -> str:
-    """Parse Server-Sent Events stream and accumulate the complete response."""
+def parse_sse_stream(response, endpoint: str, debug: bool = False) -> tuple[str, Optional[dict]]:
+    """Parse Server-Sent Events stream; return (accumulated_text, usage_dict or None)."""
     accumulated_text = ""
     chunk_count = 0
     total_lines = 0
     empty_content_count = 0
-    
+    usage = None
+
     for line in response.iter_lines(decode_unicode=True):
         if not line:
             continue
-        
+
         total_lines += 1
-        
+
         # SSE data lines start with "data: "
         if line.startswith("data: "):
             data_str = line[6:].strip()  # Remove "data: " prefix
-            
+
             # "[DONE]" signals end of stream
             if data_str == "[DONE]":
                 if debug:
                     print(f"DEBUG: Stream ended - {total_lines} lines, {chunk_count} content chunks, {empty_content_count} empty, total text: {len(accumulated_text)}")
                 break
-            
+
             try:
                 data = json.loads(data_str)
-                
+
+                # Capture usage from final chunk (stream_options.include_usage; non-null usage only)
+                chunk_usage = data.get("usage")
+                if isinstance(chunk_usage, dict):
+                    usage = chunk_usage
+
                 if debug and chunk_count < 3:  # Only print first 3 complete JSON objects
                     print(f"DEBUG chunk {chunk_count}: {json.dumps(data)[:200]}")
-                
+
                 if endpoint == "/v1/chat/completions":
                     # Try multiple possible locations for content
                     choices = data.get("choices", [])
@@ -63,7 +69,7 @@ def parse_sse_stream(response, endpoint: str, debug: bool = False) -> str:
                     choices = data.get("choices", [])
                     if choices:
                         content = choices[0].get("text", "")
-                
+
                 if content:
                     if debug:
                         print(f"DEBUG: Found content: {content[:50]}")
@@ -73,11 +79,11 @@ def parse_sse_stream(response, endpoint: str, debug: bool = False) -> str:
                 if debug:
                     print(f"DEBUG: Parse error: {e} for data: {data_str[:100]}")
                 continue
-    
+
     if debug and total_lines > 0:
         print(f"DEBUG: Returning text of length {len(accumulated_text)}")
-    
-    return accumulated_text
+
+    return accumulated_text, usage
 
 def send_request(
     idx: int,
@@ -136,17 +142,19 @@ def send_request(
             return {"success": False, "latency": latency, "tokens": 0, "error": f"HTTP {status_code}"}
         
         # Parse the SSE stream
-        text = parse_sse_stream(response, endpoint, debug)
-        
+        text, usage = parse_sse_stream(response, endpoint, debug)
+
         latency = time.time() - start
-        # Estimate tokens (rough approximation: ~4 chars per token)
-        tokens = len(text) // 4 if text else 0
-        
+        if usage is not None:
+            tokens = usage.get("total_tokens") or (usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0))
+        else:
+            tokens = len(text) // 4 if text else 0  # fallback estimate
+
         # Truncate for display
         display_text = text.replace("\n", " ")[:256] if text else "(empty response)"
         print(f"[{idx}] HTTP {status_code} {latency:.2f}s  {display_text}")
-        
-        return {"success": True, "latency": latency, "tokens": tokens, "text_length": len(text)}
+
+        return {"success": True, "latency": latency, "tokens": tokens, "text_length": len(text), "usage": usage}
     
     except requests.exceptions.Timeout:
         latency = time.time() - start
@@ -216,7 +224,8 @@ def main():
     error_count = len(results) - success_count
     latencies = [r["latency"] for r in results]
     total_tokens = sum(r["tokens"] for r in results)
-    
+    from_api = sum(1 for r in results if r.get("usage") is not None)
+
     # Print summary
     print("\n" + "="*60)
     print("SUMMARY")
@@ -228,7 +237,12 @@ def main():
         print(f"Shortest latency:     {min(latencies):.2f}s")
         print(f"Longest latency:      {max(latencies):.2f}s")
         print(f"Average latency:      {sum(latencies)/len(latencies):.2f}s")
-    print(f"Total tokens:         ~{total_tokens} (estimated)")
+    if from_api == len(results) and results:
+        print(f"Total tokens:         {total_tokens} (from API)")
+    elif from_api > 0:
+        print(f"Total tokens:         {total_tokens} ({from_api} from API, rest estimated)")
+    else:
+        print(f"Total tokens:         {total_tokens} (estimated)")
     print("="*60)
 
 if __name__ == "__main__":
