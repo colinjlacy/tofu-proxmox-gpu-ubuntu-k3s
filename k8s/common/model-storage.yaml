@@ -1,0 +1,122 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: model-pv
+spec:
+  persistentVolumeReclaimPolicy: Retain
+  accessModes: ["ReadWriteOnce"]
+  capacity:
+    storage: 100Gi
+  hostPath:
+    path: /data/models
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-pvc
+  namespace: llm
+spec:
+  storageClassName: ""
+  volumeName: model-pv
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: download-model
+  namespace: llm
+spec:
+  backoffLimit: 3
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app: download-model
+    spec:
+      restartPolicy: OnFailure
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: nvidia.com/gpu.present
+                    operator: In
+                    values:
+                      - "true"
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: model-pvc
+      containers:
+        - name: download-model
+          image: python:3.12-alpine
+          command: ["/bin/sh", "-lc"]
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: token
+            - name: GGUF_FILE
+              value: "Qwen3.5-9B-Q8_0.gguf"
+            - name: GGUF_URL
+              value: "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q8_0.gguf"
+            - name: VLLM_LOCAL_DIR
+              value: "Qwen3.5-9B-MLX-8bit"
+            - name: VLLM_MODEL
+              value: "mlx-community/Qwen3.5-9B-MLX-8bit"
+          args:
+            - |
+              # Download GGUF model for llama.cpp deployment
+              set -eux
+              apk add --no-cache curl coreutils
+              cd /models
+              mkdir -p llama-cpp
+              GGUF_PATH="llama-cpp/${GGUF_FILE}"
+
+              # If a bad file is already on the PVC, remove it and re-download.
+              if [ -f "${GGUF_PATH}" ]; then
+                magic="$(head -c 4 "${GGUF_PATH}" 2>/dev/null || true)"
+                if [ "$magic" != "GGUF" ]; then
+                  echo "Existing file is not GGUF (magic=$magic). Removing."
+                  rm -f "${GGUF_PATH}"
+                fi
+              fi
+
+              if [ ! -f "${GGUF_PATH}" ]; then
+                echo "Downloading ${GGUF_FILE} ..."
+                curl -fL --retry 5 --retry-delay 2 \
+                  -H "Authorization: Bearer ${HF_TOKEN}" \
+                  -o "${GGUF_PATH}" \
+                  "${GGUF_URL}"
+              fi
+
+              magic="$(head -c 4 "${GGUF_PATH}" 2>/dev/null || true)"
+              [ "$magic" = "GGUF" ] || (echo "Downloaded file is not GGUF (magic=$magic)."; exit 1)
+
+              # Download vLLM model (Hugging Face format) for qwen3-vllm deployment
+              pip install -q --no-cache-dir "huggingface_hub"
+              mkdir -p /models/vllm
+              echo "Downloading vLLM model ${VLLM_MODEL} ..."
+              python -c "
+              from huggingface_hub import snapshot_download
+              snapshot_download(repo_id='${VLLM_MODEL}', local_dir='/models/vllm/${VLLM_LOCAL_DIR}', token='${HF_TOKEN}')
+              "
+
+              echo "Contents of download directories:"
+              ls -la /models/llama-cpp
+              ls -la /models/vllm
+          volumeMounts:
+            - name: model
+              mountPath: /models
