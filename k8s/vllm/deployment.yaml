@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: qwen3-vllm
+  name: vllm-deployment
   namespace: llm
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: qwen3-vllm
+      app: vllm
   template:
     metadata:
       labels:
-        app: qwen3-vllm
+        app: vllm
     spec:
       tolerations:
         - key: nvidia.com/gpu
@@ -35,7 +35,7 @@ spec:
                   name: hf-token
                   key: token
             - name: VLLM_MODEL
-              value: "mlx-community/Qwen3.5-9B-MLX-8bit"
+              value: "RedHatAI/Meta-Llama-3.1-8B-Instruct-FP8"
           args:
             - |
               set -eux
@@ -56,9 +56,9 @@ spec:
         - name: vllm
           image: vllm/vllm-openai:v0.17.0
           args:
-            - "/models/vllm/Qwen3.5-9B-MLX-8bit"
-            - "--reasoning-parser"
-            - "qwen3"
+            - "/models/vllm/Meta-Llama-3.1-8B-Instruct-FP8"
+            - "--max-model-len"
+            - "4096"
           ports:
             - containerPort: 8000
               name: http
@@ -66,7 +66,7 @@ spec:
             limits:
               nvidia.com/gpu: "1"
               cpu: "4"
-              memory: 12Gi
+              memory: 6Gi
           volumeMounts:
             - name: model
               mountPath: /models
