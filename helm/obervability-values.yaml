@@ -1,0 +1,16 @@
+prometheus:
+  prometheusSpec:
+
+    # # bug workaround - https://github.com/prometheus-operator/prometheus-operator/issues/5197#issuecomment-1598421254
+    # scrapeInterval: "15s"
+    # evaluationInterval: "30s"
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+grafana:
+  adminPassword: thisthat
